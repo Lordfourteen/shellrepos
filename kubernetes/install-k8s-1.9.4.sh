@@ -1004,7 +1004,7 @@ kube::increase_k8s_nodes()
     EXTRA_GPUTYPE_ARRAY=(`cat ${LOCAL_PATH_PREFIX}/${PKG_NAME}/install_extra.conf | grep "^gputype" | awk -F'=' '{print $2}'`)
 
     # all extra node including regular nodes and GPU nodes
-    EXTRA_NODES_ARRAY=(${EXTRA_NODES_ARRAY} ${EXTRA_GPUNODE_ARRAY})
+    EXTRA_NODES_ARRAY=(${EXTRA_NONODE_ARRAY[*]} ${EXTRA_GPUNODE_ARRAY[*]})
 
     # setup ssh for new nodes
     for((i=1;i<=${#EXTRA_NODES_ARRAY[*]};i++))
@@ -1026,7 +1026,7 @@ kube::increase_k8s_nodes()
 			}
 			expect eof
 				set timeout 30
-				spawn ssh-copy-id root@${HOSTNAME_ARRAY[i-1]} 
+				spawn ssh-copy-id root@${EXTRA_HOSTNAME_ARRAY[i-1]} 
 				expect {
 				#"password: " { send "${EXTRA_PASSWORD_ARRAY[i-1]}\r";}
 				"yes/no" { send "yes\r";}
@@ -1046,7 +1046,7 @@ EOF
         sed -i "6s/^password=${PASSWORD_ARRAY[0]}/& ${EXTRA_PASSWORD_ARRAY[i-1]}/g" ${LOCAL_PATH_PREFIX}/${PKG_NAME}/install.conf
     done
 
-    for((i=${EXTRA_NONODE_ARRAY[*]};i<${#EXTRA_NODES_ARRAY[*]};i++))
+    for((i=${#EXTRA_NONODE_ARRAY[*]};i<${#EXTRA_NODES_ARRAY[*]};i++))
     do 
         sed -i "5s/$/& ${EXTRA_HOSTNAME_ARRAY[i-1]}/g" ${LOCAL_PATH_PREFIX}/${PKG_NAME}/install.conf
         sed -i "6s/$/& ${EXTRA_PASSWORD_ARRAY[i-1]}/g" ${LOCAL_PATH_PREFIX}/${PKG_NAME}/install.conf
