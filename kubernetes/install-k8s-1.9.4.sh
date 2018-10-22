@@ -1,4 +1,4 @@
-#!/bin/bash
+i!/bin/bash
 
 # K8S offline install script.
 # Installed & verified by CentOS Linux release 7.2.1511 (Core)
@@ -19,12 +19,12 @@
 
 set -x
 set -e
-#set pss's timeout=11111110
+#set pssh's timeout=11111110
 TIMEOUT=11111110
 NODE_ROLE=$1
 KUBE_REPO_PREFIX=gcr.io/google_containers
 LOCAL_PATH_PREFIX=/home/user
-PKG_NAME=enginetech-mlpltf-v1.16
+PKG_NAME=enginetech-mlpltf-v1.8
 
 #NODE_ARRAY=(`cat ${LOCAL_PATH_PREFIX}/${PKG_NAME}/install.conf | grep "^node" | awk -F'=' '{print $2}'`)
 MASTER=(`cat ${LOCAL_PATH_PREFIX}/${PKG_NAME}/install.conf | grep "^master" | awk -F'=' '{print $2}'`)
@@ -300,7 +300,9 @@ kube::install_bin()
 
         # Change cgroup-driver for kubelet
         sed -i -e "s/cgroup-driver=systemd/cgroup-driver=cgroupfs --feature-gates=\'Accelerators=true\'/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-		#sed -i -e 's/$KUBELET_NETWORK_ARGS//g' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+        # Set the default --image-pull-progress-deadline from 1m0s to 6m0s
+        sed -i -e  's/KUBELET_KUBECONFIG_ARGS=/KUBELET_NETWORK_ARGS=--image-pull-progress-deadline=6m0s /' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
         # Enable and start kubelet service
         systemctl enable kubelet.service && systemctl start kubelet.service && rm -rf /etc/kubernetes
@@ -502,7 +504,9 @@ kube::prepare_ssh_node(){
 
 kube::pssh_nodes_install()
 {
-    pssh -h /etc/pssh/hosts -i "mkdir -p ${LOCAL_PATH_PREFIX}/${PKG_NAME}"
+    if [ $NODE_ROLE != "increase" ];then 
+        pssh -h /etc/pssh/hosts -i "mkdir -p ${LOCAL_PATH_PREFIX}/${PKG_NAME}"
+    fi
     pscp -h /etc/pssh/hosts -r ${LOCAL_PATH_PREFIX}/${PKG_NAME}/install.conf ${LOCAL_PATH_PREFIX}/${PKG_NAME}
     pscp -h /etc/pssh/hosts -r ${LOCAL_PATH_PREFIX}/${PKG_NAME}/probe.sh ${LOCAL_PATH_PREFIX}/${PKG_NAME}
     pscp -h /etc/pssh/hosts -r ${LOCAL_PATH_PREFIX}/${PKG_NAME}/master_token  ${LOCAL_PATH_PREFIX}/${PKG_NAME}
@@ -908,10 +912,10 @@ kube::tear_down()
 kube::prepare_server()
 {
     # Mount the cdrom as the yum repository
-    curl -L http://$HTTP_SERVER/os/CentOS-7.2-x86_64-DVD-1511.iso > /root/CentOS-7.2-x86_64-DVD-1511.iso 
     mkdir -p /media/cdrom/	
     ret=`mount |grep CentOS-7.2-x86_64-DVD-1511.iso | wc -l`
     if [ $ret -eq 0 ]; then        
+        curl -L http://$HTTP_SERVER/os/CentOS-7.2-x86_64-DVD-1511.iso > /root/CentOS-7.2-x86_64-DVD-1511.iso 
         mount -o loop /root/CentOS-7.2-x86_64-DVD-1511.iso /media/cdrom/
         echo /root/CentOS-7.2-x86_64-DVD-1511.iso /media/cdrom iso9660 loop 0 0 >> /etc/fstab
     else
@@ -1013,7 +1017,7 @@ kube::increase_k8s_nodes()
         echo "${EXTRA_NODES_ARRAY[i-1]}     ${EXTRA_HOSTNAME_ARRAY[i-1]}" >> /etc/hosts
 				/usr/bin/expect <<-EOF
 				set timeout 30
-				spawn ssh root@${EXTRA_NODES_ARRAY[i-1]} "find /root/.ssh/ -name authorized_keys -exec mv {} authorized_keys.$(date +'%Y%m%d') \;"
+				spawn ssh root@${EXTRA_NODES_ARRAY[i-1]} "test -e ~/.ssh/authorized_keys && mv ~/.ssh/authorized_keys authorized_keys.$(date +'%Y%m%d')"
 				expect {
 					"yes/no" { send "yes\r"; exp_continue }
 					"password: " { send "${EXTRA_PASSWORD_ARRAY[i-1]}\r";}
@@ -1052,10 +1056,16 @@ EOF
         sed -i "6s/$/& ${EXTRA_PASSWORD_ARRAY[i-1]}/g" ${LOCAL_PATH_PREFIX}/${PKG_NAME}/install.conf
     done
 
+    # create working directory on all to be added
+    for((i=0;i<${#EXTRA_NODES_ARRAY[*]};i++))
+    do 
+        ssh root@${EXTRA_NODES_ARRAY[i]} "mkdir -p ${LOCAL_PATH_PREFIX}/${PKG_NAME}"
+    done
+
     # generate corresponding gputype file
     for((i=0; i<${#EXTRA_GPUNODE_ARRAY[*]};i++))
     do
-        ssh root@${EXTRA_GPUNODE_ARRAY[i]} "mkdir -p ${LOCAL_PATH_PREFIX}/${PKG_NAME};echo ${EXTRA_GPUTYPE_ARRAY[i]} > ${LOCAL_PATH_PREFIX}/${PKG_NAME}/gputype"
+        ssh root@${EXTRA_GPUNODE_ARRAY[i]} "echo ${EXTRA_GPUTYPE_ARRAY[i]} > ${LOCAL_PATH_PREFIX}/${PKG_NAME}/gputype"
     done
 
     # setup hostname
