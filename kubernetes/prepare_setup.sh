@@ -4,13 +4,28 @@ LOCAL_PATH_PREFIX=`pwd`
 CENTOS_MIRROR_DIR=$LOCAL_PATH_PREFIX/os
 CENTOS_MEDIA_NAME=CentOS-7.2-x86_64-DVD-1511.iso
 
-set -e
-set -x
+#set -e
+#set -x
 
 if [ `id -u` -ne 0 ];then
     echo must run as root
     exit 1
 fi
+
+msg() {
+    printf '%b\n' "$1" 
+}
+
+success() {
+    if [ "$?" -eq '0' ]; then
+        msg "\33[32m[✔]\33[0m ${1}"
+    fi
+}
+
+error() {
+    msg "\33[31m[✘]\33[0m ${1}"
+    exit 1
+}
 
 setup_local_source()
 {
@@ -70,6 +85,8 @@ install_mysql()
     else
         echo "MySQL install package does not exist!"
     fi
+
+    success "install Mysql Successfully."
 }
 
 setup_mysql()
@@ -91,7 +108,7 @@ setup_mysql()
     SQL_DB_PATH=$LOCAL_PATH_PREFIX/auth_all_info.sql
     echo import $SOL_DB_PATH to mlpltf
     mysql -u root -pwsx7hhq3 -e "create database mlpltf; use mlpltf; source $SQL_DB_PATH;"
-    echo "Mysql setup successfully."
+    success "Mysql setup successfully."
 }
 
 install_jre()
@@ -110,7 +127,7 @@ install_jre()
     JAVA_PACKAGE=$LOCAL_PATH_PREFIX/rpms/jre-9.0.1_linux-x64_bin.rpm
     echo "Begin to install to jre"
     yum localinstall -y $JAVA_PACKAGE 
-    echo "Jre install successfully"
+    success "Jre install successfully."
 }
 
 precheck_gpu_driver()
@@ -131,7 +148,7 @@ EOF
 
         echo "You need perform a reboot to take effect!"
     else 
-        echo "Perform pre-check nouveau successfully."
+        success "Perform pre-check nouveau successfully."
     fi
 }
 
@@ -139,6 +156,10 @@ disable_linux_swap()
 {
     cat /proc/swaps 
     swapoff -a
+    # comment the line about swap in /etc/fstab
+    sed -i 's/^UUID=\w\{8\}\(\w\{4\}\)\{3\}-\w\{12\} \+\bswap\b \+\bswap\b/#&/g' /etc/fstab
+
+    success "Disable linux swap done"
 
 }
 
