@@ -302,7 +302,7 @@ kube::install_bin()
         sed -i -e "s/cgroup-driver=systemd/cgroup-driver=cgroupfs --feature-gates=\'Accelerators=true\'/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
         # Set the default --image-pull-progress-deadline from 1m0s to 6m0s
-        sed -i -e  's/KUBELET_KUBECONFIG_ARGS=/KUBELET_NETWORK_ARGS=--image-pull-progress-deadline=6m0s /' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+        #sed -i -e  's/KUBELET_KUBECONFIG_ARGS=/KUBELET_NETWORK_ARGS=--image-pull-progress-deadline=6m0s /' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
         # Enable and start kubelet service
         systemctl enable kubelet.service && systemctl start kubelet.service && rm -rf /etc/kubernetes
@@ -839,7 +839,7 @@ kube::label_gpunode_accelerator()
 kube::crond_poll_nvidia_gpu()
 {
     # create crontab task for polling the number of NVIDIA GPU
-    if [ -e ${LOCAL_PATH_PREFIX}/poll_nvidia_gpu.sh ];then
+    if [ -e ${LOCAL_PATH_PREFIX}/${PKG_NAME}/poll_nvidia_gpu.sh ];then
         echo \*/30 \* \* \* \* ${LOCAL_PATH_PREFIX}/${PKG_NAME}/poll_nvidia_gpu.sh >> /etc/crontab
         crontab /etc/crontab
     fi

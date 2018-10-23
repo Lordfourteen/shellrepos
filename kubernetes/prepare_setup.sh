@@ -133,7 +133,10 @@ install_jre()
 precheck_gpu_driver()
 {
     # check whether the system has installed nouveau
-    ret=`lsmod | grep -i nouveau`
+    set +e
+    lsmod | grep -i nouveau
+    ret=$?
+    set -e
     if [ $ret -eq 0 ];then 
         echo "It seems that you have installed nouveau module."
         cat << EOF >> /usr/lib/modprobe.d/dist-blacklist.conf
@@ -146,7 +149,7 @@ EOF
         # generate new system images
         dracut /boot/initramfs-$(uname -r).img $(uname -r)
 
-        echo "You need perform a reboot to take effect!"
+        error  "You need perform a reboot to take effect!"
     else 
         success "Perform pre-check nouveau successfully."
     fi
@@ -156,11 +159,13 @@ disable_linux_swap()
 {
     cat /proc/swaps 
     swapoff -a
-    # comment the line about swap in /etc/fstab
+    # comment the line about swap in /etc/fstab for standard file system
     sed -i 's/^UUID=\w\{8\}\(\w\{4\}\)\{3\}-\w\{12\} \+\bswap\b \+\bswap\b/#&/g' /etc/fstab
 
-    success "Disable linux swap done"
+    # comment the line about swap in /etc/fstab for LVM
+    sed -i 's/^\/dev\/mapper\/centos-swap/#&/g' /etc/fstab
 
+    success "Disable linux swap done"
 }
 
 setup_local_source
@@ -168,4 +173,4 @@ install_mysql
 setup_mysql
 install_jre
 precheck_gpu_driver
-
+disable_linux_swap
