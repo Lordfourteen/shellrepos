@@ -302,7 +302,7 @@ kube::install_bin()
         sed -i -e "s/cgroup-driver=systemd/cgroup-driver=cgroupfs --feature-gates=\'Accelerators=true\'/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
         # Set the default --image-pull-progress-deadline from 1m0s to 6m0s
-        #sed -i -e  's/KUBELET_KUBECONFIG_ARGS=/KUBELET_NETWORK_ARGS=--image-pull-progress-deadline=6m0s /' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+        sed -i -e  's/KUBELET_KUBECONFIG_ARGS=/KUBELET_KUBECONFIG_ARGS=--image-pull-progress-deadline=6m0s /' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
         # Enable and start kubelet service
         systemctl enable kubelet.service && systemctl start kubelet.service && rm -rf /etc/kubernetes
@@ -602,7 +602,10 @@ kube::master_up()
 
     echo "K8S master install finished!"
 	
-    kube::pssh_nodes_install
+    # you don't need to perform this action while there is not children node.
+    if [ ${#NODE_ARRAY[*]} -gt 0 ];then
+        kube::pssh_nodes_install
+    fi
 
     kube::config_master_schedule
 
@@ -693,7 +696,10 @@ kube::gpumaster_up()
 
     echo "K8S master install finished!"
 	
-    kube::pssh_nodes_install
+    # you don't need to perform this action while there is not children node.
+    if [ ${#NODE_ARRAY[*]} -gt 0 ];then
+        kube::pssh_nodes_install
+    fi
 
     kube::config_master_schedule
 
@@ -831,7 +837,7 @@ kube::label_gpunode_accelerator()
     for((i=index;i<${#HOSTNAME_ARRAY[@]};i++))
     do 
         NVIDIA_GPU_LABEL=$(ssh root@${HOSTNAME_ARRAY[i]} "nvidia-smi --query-gpu=gpu_name --format=csv,noheader --id=0 | sed -e 's/ /-/g'")
-        kubeclt label nodes ${HOSTNAME_ARRAY[i]} accelerator=$NVIDIA_GPU_LABEL
+        kubectl label nodes ${HOSTNAME_ARRAY[i]} accelerator=$NVIDIA_GPU_LABEL
     done
 }
 
@@ -849,7 +855,7 @@ kube::enable_rc_local()
 {
     # add four comment lines
     if [[ $NODE_ROLE == "node" || $NODE_ROLE == "gpunode" ]];then 
-        echo -e "#\n#\n#\n#" >> /etc/rc.local
+        echo -ejjkkkk"#\n#\n#\n#" >> /etc/rc.local
     fi
     # config /etc/rc.local
     cat << 'EOF' >> /etc/rc.local 

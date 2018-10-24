@@ -4,8 +4,8 @@ LOCAL_PATH_PREFIX=`pwd`
 CENTOS_MIRROR_DIR=$LOCAL_PATH_PREFIX/os
 CENTOS_MEDIA_NAME=CentOS-7.2-x86_64-DVD-1511.iso
 
-#set -e
-#set -x
+set -e
+set -x
 
 if [ `id -u` -ne 0 ];then
     echo must run as root
@@ -160,7 +160,7 @@ disable_linux_swap()
     cat /proc/swaps 
     swapoff -a
     # comment the line about swap in /etc/fstab for standard file system
-    sed -i 's/^UUID=\w\{8\}\(\w\{4\}\)\{3\}-\w\{12\} \+\bswap\b \+\bswap\b/#&/g' /etc/fstab
+    sed -i 's/^UUID=\w\{8\}-\(\w\{4\}-\)\{3\}\w\{12\} \+\bswap\b \+\bswap\b/#&/g' /etc/fstab
 
     # comment the line about swap in /etc/fstab for LVM
     sed -i 's/^\/dev\/mapper\/centos-swap/#&/g' /etc/fstab
@@ -172,5 +172,4 @@ setup_local_source
 install_mysql
 setup_mysql
 install_jre
-precheck_gpu_driver
 disable_linux_swap
