@@ -1,4 +1,4 @@
-i!/bin/bash
+#!/bin/bash
 
 # K8S offline install script.
 # Installed & verified by CentOS Linux release 7.2.1511 (Core)
@@ -855,7 +855,7 @@ kube::enable_rc_local()
 {
     # add four comment lines
     if [[ $NODE_ROLE == "node" || $NODE_ROLE == "gpunode" ]];then 
-        echo -ejjkkkk"#\n#\n#\n#" >> /etc/rc.local
+        echo -e "#\n#\n#\n#" >> /etc/rc.local
     fi
     # config /etc/rc.local
     cat << 'EOF' >> /etc/rc.local 
@@ -1082,6 +1082,13 @@ EOF
 
     # perform installation 
     kube::pssh_nodes_install
+
+    # do extra label accelerator for increased gpunode
+    for((i=${#EXTRA_NODES_ARRAY[@]};i<${#EXTRA_HOSTNAME_ARRAY[@]};i++))
+    do 
+        NVIDIA_GPU_LABEL=$(ssh root@${EXTRA_HOSTNAME_ARRAY[i]} "nvidia-smi --query-gpu=gpu_name --format=csv,noheader --id=0 | sed -e 's/ /-/g'")
+        kubectl label nodes ${EXTRA_HOSTNAME_ARRAY[i]} accelerator=$NVIDIA_GPU_LABEL
+    done
 
     echo "Increase the Kubernetes nodes successfully!"
 }
